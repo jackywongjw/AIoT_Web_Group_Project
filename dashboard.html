@@ -507,9 +507,21 @@
             }
         }
 
-        // Update sensor data from ThingSpeak
+        // Update sensor data
         async function updateSensors() {
             try {
+                // First try to get data from local API
+                try {
+                    const data = await fetchJson(`${API_BASE}/data`);
+                    document.getElementById('temperature').textContent = `${data.temperature.toFixed(1)}°`;
+                    document.getElementById('humidity').textContent = `${data.humidity.toFixed(1)}%`;
+                    document.getElementById('light').textContent = `${data.light_intensity.toFixed(1)} lux`;
+                    return;
+                } catch (localError) {
+                    console.warn('Local sensor data unavailable, falling back to ThingSpeak:', localError);
+                }
+
+                // Fallback to ThingSpeak
                 const data = await fetchJson(THINGSPEAK_URL);
                 let latestTemp = null, latestHum = null, latestLight = null;
                 for (let feed of data.feeds.reverse()) {
