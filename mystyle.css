@@ -1,0 +1,56 @@
+.log-entry {
+    transition: background-color 0.2s;
+}
+
+.log-entry:hover {
+    background-color: #374151;
+}
+
+/* Power Button Styles */
+.power-btn {
+    width: 60px;
+    height: 60px;
+    background-color: #1C2526;
+    border-radius: 50%;
+    position: relative;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: box-shadow 0.3s;
+}
+
+.power-btn.is-on {
+    box-shadow: 0 0 15px #00FF00, 0 0 30px #00FF00;
+}
+
+.power-btn:before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    border: 3px solid #A9A9A9;
+    border-radius: 50%;
+    box-sizing: border-box;
+}
+
+.power-btn.is-on:before {
+    border-color: #00FF00;
+}
+
+.power-btn:after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 12px;
+    background-color: #A9A9A9;
+}
+
+.power-btn.is-on:after {
+    background-color: #00FF00;
+}

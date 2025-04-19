@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIoT Smart Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .log-entry {
+            transition: background-color 0.2s;
+        }
+
+        .log-entry:hover {
+            background-color: #374151;
+        }
+
+        /* Power Button Styles */
+        .power-btn {
+            width: 60px;
+            height: 60px;
+            background-color: #1C2526;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: box-shadow 0.3s;
+        }
+
+        .power-btn.is-on {
+            box-shadow: 0 0 15px #00FF00, 0 0 30px #00FF00;
+        }
+
+        .power-btn:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            border: 3px solid #A9A9A9;
+            border-radius: 50%;
+            box-sizing: border-box;
+        }
+
+        .power-btn.is-on:before {
+            border-color: #00FF00;
+        }
+
+        .power-btn:after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 3px;
+            height: 12px;
+            background-color: #A9A9A9;
+        }
+
+        .power-btn.is-on:after {
+            background-color: #00FF00;
+        }
+
+        /* Voice Control Button Styles */
+        .voice-btn-container {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .background-circle {
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            background-color: #1C2526;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+
+        .voice-btn {
+            width: 200px;
+            height: 200px;
+            background-color: #2A3550;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            z-index: 2;
+        }
+
+        .voice-btn[data-active="true"] {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 40px #3B82F6, 0 0 80px #3B82F6;
+            }
+
+            50% {
+                box-shadow: 0 0 80px #3B82F6, 0 0 160px #3B82F6;
+            }
+
+            100% {
+                box-shadow: 0 0 40px #3B82F6, 0 0 80px #3B82F6;
+            }
+        }
+
+        .voice-btn .mic-icon {
+            position: absolute;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 48px;
+            border: 4px solid #A9A9A9;
+            border-bottom-left-radius: 50%;
+            border-bottom-right-radius: 50%;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+            box-sizing: border-box;
+            z-index: 3;
+        }
+
+        .voice-btn[data-active="true"] .mic-icon {
+            border-color: #FF0000;
+        }
+
+        .voice-btn .mic-stand {
+            position: absolute;
+            top: 104px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 24px;
+            background-color: #A9A9A9;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+            z-index: 3;
+        }
+
+        .voice-btn[data-active="true"] .mic-stand {
+            background-color: #FF0000;
+        }
+
+        .voice-btn:not([data-active="true"]) .slash {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            width: 4px;
+            height: 100px;
+            background-color: #FF0000;
+            z-index: 3;
+        }
+
+        /* Layout Adjustments */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 2rem;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .sensor-prediction-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .history-log {
+            /* Removed height and max-height to allow natural alignment */
+        }
+
+        .block-height {
+            min-height: 200px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid #4B5563;
+        }
+
+        th {
+            font-weight: 600;
+        }
+
+        .status-on {
+            color: #34D399;
+        }
+
+        .status-off {
+            color: #F87171;
+        }
+
+        .voice-block {
+            position: relative;
+        }
+
+        .voice-status {
+            position: absolute;
+            bottom: 0.5rem;
+            left: 1rem;
+        }
+
+        .voice-btn-wrapper {
+            height: 20rem;
+            /* 320px */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .voice-btn-container {
+            /* margin-top: 0.1rem;*/
+            margin-bottom: 3.3rem;
+            /* Move button up by 16px */
+        }
+
+        /* Iframe Styles for ThingSpeak Charts */
+        iframe {
+            border: none;
+            background: transparent;
+        }
+
+        /* Loading Screen Styles */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom right, #1E2A44, #0F172A);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-screen.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 100px;
+            height: 100px;
+            border: 8px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 8px solid #00FF00;
+            animation: spin 1s linear infinite;
+            margin-bottom: 30px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            font-size: 24px;
+            color: white;
+            letter-spacing: 1px;
+        }
+
+        .loading-progress {
+            width: 300px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #00FF00;
+            transition: width 3s linear;
+        }
+
+        .app-content {
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+
+        .app-content.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-[#1E2A44] to-[#0F172A] min-h-screen font-sans text-white">
+    <div class="loading-screen" id="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading...</div>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loading-progress-bar"></div>
+        </div>
+    </div>
+    <div class="app-content" id="app-content">
+        <div class="container mx-auto p-8">
+            <div class="dashboard-grid">
+                <!-- Main Content -->
+                <div class="main-content">
+                    <!-- Title -->
+                    <div class="flex justify-center items-center mb-8">
+                        <h1 class="text-6xl font-bold">AIoT Smart Control</h1>
+                        <span class="text-6xl ml-2">🤖</span>
+                    </div>
+
+                    <!-- Device Controls -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <!-- Fan -->
+                        <div class="bg-[#2A3550] p-6 rounded-lg">
+                            <h2 class="text-xl font-semibold mb-4">Fan</h2>
+                            <div class="mb-4 flex justify-center">
+                                <button id="fan-toggle" class="power-btn" data-device="fan"></button>
+                            </div>
+                            <p id="fan-status">Status: <span class="font-medium">Unknown</span></p>
+                        </div>
+                        <!-- Light -->
+                        <div class="bg-[#2A3550] p-6 rounded-lg">
+                            <h2 class="text-xl font-semibold mb-4">Light</h2>
+                            <div class="mb-4 flex justify-center">
+                                <button id="light-toggle" class="power-btn" data-device="light"></button>
+                            </div>
+                            <p id="light-status">Status: <span class="font-medium">Unknown</span></p>
+                        </div>
+                        <!-- Dehumidifier -->
+                        <div class="bg-[#2A3550] p-6 rounded-lg">
+                            <h2 class="text-xl font-semibold mb-4">Dehumidifier</h2>
+                            <div class="mb-4 flex justify-center">
+                                <button id="dehumidifier-toggle" class="power-btn" data-device="dehumidifier"></button>
+                            </div>
+                            <p id="dehumidifier-status">Status: <span class="font-medium">Unknown</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Sensor Data and Prediction -->
+                    <div class="sensor-prediction-grid">
+                        <!-- Sensor Data -->
+                        <div class="bg-[#2A3550] p-6 rounded-lg block-height">
+                            <h2 class="text-xl font-semibold mb-4">Real-Time Environment:</h2>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <th>Temperature</th>
+                                        <td id="temperature">Loading...</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Humidity</th>
+                                        <td id="humidity">Loading...</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Light Intensity</th>
+                                        <td id="light">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Fan Prediction -->
+                        <div class="bg-[#2A3550] p-6 rounded-lg block-height">
+                            <h2 class="text-xl font-semibold mb-4">AI Auto Fan Prediction:</h2>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <th>Turn-<span class="text-green-400">ON</span></th>
+                                        <td id="predict-on">Loading...</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Turn-<span class="text-red-400">OFF</span></th>
+                                        <td id="predict-off">Loading...</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Average Runtime</th>
+                                        <td id="predict-duration">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p id="predict-error" class="text-red-400 hidden mt-2"></p>
+                        </div>
+                    </div>
+
+                    <!-- Voice Control -->
+                    <div class="bg-[#2A3550] p-6 rounded-lg voice-block">
+                        <h2 class="text-xl font-semibold mb-4">AI Voice Input:</h2>
+                        <div class="voice-btn-wrapper">
+                            <div class="voice-btn-container">
+                                <div class="background-circle"></div>
+                                <button id="voice-control" class="voice-btn">
+                                    <div class="mic-icon"></div>
+                                    <div class="mic-stand"></div>
+                                    <div class="slash"></div>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="voice-status" class="voice-status text-2xl">Input detect: Inactive</p>
+                    </div>
+                </div>
+
+                <!-- History Logs -->
+                <div class="bg-[#2A3550] p-6 rounded-lg history-log">
+                    <h2 class="text-xl font-semibold mb-4">History Log:</h2>
+                    <div class="max-h-[952px] overflow-y-auto">
+                        <table id="logs">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Device</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Logs will be dynamically inserted -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ThingSpeak Charts -->
+            <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <!-- Field 1 Chart (Temperature) -->
+                <div class="bg-[#2A3550] p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">Temperature Chart</h2>
+                    <iframe class="w-full h-64"
+                        src="https://thingspeak.mathworks.com/channels/2922052/charts/1?bgcolor=%232A3550&color=%23FFDE21&dynamic=true&results=30&title=&type=spline&update=15"></iframe>
+                </div>
+                <!-- Field 2 Chart (Humidity) -->
+                <div class="bg-[#2A3550] p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">Humidity Chart</h2>
+                    <iframe class="w-full h-64"
+                        src="https://thingspeak.mathworks.com/channels/2922052/charts/2?bgcolor=%232A3550&color=%23FFDE21&dynamic=true&results=30&title=&type=spline&update=15"></iframe>
+                </div>
+                <!-- Field 3 Chart (Light Intensity) -->
+                <div class="bg-[#2A3550] p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">Light Intensity Chart</h2>
+                    <iframe class="w-full h-64"
+                        src="https://thingspeak.mathworks.com/channels/2922052/charts/3?bgcolor=%232A3550&color=%23FFDE21&dynamic=true&results=30&title=&type=spline&update=15"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEVICE_IP = 'aiot-smart-control.10242048.xyz';
+        const API_BASE = `https://${DEVICE_IP}/api`;
+        const THINGSPEAK_URL = 'https://api.thingspeak.com/channels/2922052/feeds.json?api_key=V8621YGR9DGFWHWT&results=50';
+
+        // Fetch JSON with error handling
+        async function fetchJson(url) {
+            const response = await fetch(url, { mode: 'cors' });
+            if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+            return response.json();
+        }
+
+        // Update device status
+        async function updateDeviceStatus() {
+            try {
+                const data = await fetchJson(`${API_BASE}/status`);
+                const devices = ['fan', 'light', 'dehumidifier'];
+                devices.forEach(device => {
+                    const isOn = data[device] === 'on';
+                    const button = document.getElementById(`${device}-toggle`);
+                    const statusSpan = document.getElementById(`${device}-status`).querySelector('span');
+                    button.classList.toggle('is-on', isOn);
+                    statusSpan.textContent = isOn ? 'On' : 'Off';
+                    statusSpan.className = `font-medium ${isOn ? 'text-green-400' : 'text-red-400'}`;
+                });
+            } catch (error) {
+                console.error('Error fetching device status:', error);
+                ['fan', 'light', 'dehumidifier'].forEach(device => {
+                    const statusSpan = document.getElementById(`${device}-status`).querySelector('span');
+                    statusSpan.textContent = 'Error';
+                    statusSpan.className = 'text-red-400 font-medium';
+                });
+            }
+        }
+
+        // Update sensor data from ThingSpeak
+        async function updateSensors() {
+            try {
+                const data = await fetchJson(THINGSPEAK_URL);
+                let latestTemp = null, latestHum = null, latestLight = null;
+                for (let feed of data.feeds.reverse()) {
+                    if (feed.field1 && !isNaN(parseFloat(feed.field1)) && latestTemp === null) latestTemp = parseFloat(feed.field1).toFixed(1);
+                    if (feed.field2 && !isNaN(parseFloat(feed.field2)) && latestHum === null) latestHum = parseFloat(feed.field2).toFixed(1);
+                    if (feed.field3 && !isNaN(parseFloat(feed.field3)) && latestLight === null) latestLight = parseFloat(feed.field3).toFixed(1);
+                    if (latestTemp && latestHum && latestLight) break;
+                }
+                document.getElementById('temperature').textContent = latestTemp ? `${latestTemp}°` : 'Unavailable';
+                document.getElementById('humidity').textContent = latestHum ? `${latestHum}%` : 'Unavailable';
+                document.getElementById('light').textContent = latestLight ? `${latestLight} lux` : 'Unavailable';
+            } catch (error) {
+                console.error('Error fetching sensor data:', error);
+                document.getElementById('temperature').textContent = 'Unavailable';
+                document.getElementById('humidity').textContent = 'Unavailable';
+                document.getElementById('light').textContent = 'Unavailable';
+            }
+        }
+
+        // Update fan prediction
+        async function updatePrediction() {
+            try {
+                const data = await fetchJson(`${API_BASE}/predict`);
+                const errorElement = document.getElementById('predict-error');
+                if (data.error) {
+                    errorElement.textContent = `Error: ${data.error}`;
+                    errorElement.classList.remove('hidden');
+                    document.getElementById('predict-on').textContent = 'N/A';
+                    document.getElementById('predict-off').textContent = 'N/A';
+                    document.getElementById('predict-duration').textContent = 'N/A';
+                } else {
+                    errorElement.classList.add('hidden');
+                    document.getElementById('predict-on').textContent = `${data.temp_threshold_on.toFixed(1)}°`;
+                    document.getElementById('predict-off').textContent = `${data.temp_threshold_off.toFixed(1)}°`;
+                    document.getElementById('predict-duration').textContent = `${(data.avg_duration / 60).toFixed(1)} min`;
+                }
+            } catch (error) {
+                console.error('Error fetching prediction:', error);
+                document.getElementById('predict-error').textContent = 'Error: Unable to fetch prediction data';
+                document.getElementById('predict-error').classList.remove('hidden');
+                document.getElementById('predict-on').textContent = 'N/A';
+                document.getElementById('predict-off').textContent = 'N/A';
+                document.getElementById('predict-duration').textContent = 'N/A';
+            }
+        }
+
+        // Update history logs
+        async function updateLogs() {
+            try {
+                const logs = await fetchJson(`${API_BASE}/logs`);
+                const logsContainer = document.getElementById('logs').querySelector('tbody');
+                logsContainer.innerHTML = logs.length ? logs.map(log => `
+          <tr>
+            <td>${new Date(log.time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}</td>
+            <td>${log.device_name}</td>
+            <td class="${log.status === 'on' ? 'status-on' : 'status-off'}">${log.status.charAt(0).toUpperCase() + log.status.slice(1)}</td>
+          </tr>
+        `).join('') : '<tr><td colspan="3" class="text-gray-400 text-center">No logs available</td></tr>';
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+                document.getElementById('logs').querySelector('tbody').innerHTML = '<tr><td colspan="3" class="text-red-400 text-center">Error: Unable to fetch logs</td></tr>';
+            }
+        }
+
+        // Control device
+        async function controlDevice(device, action) {
+            try {
+                await fetchJson(`${API_BASE}/${device}/${action}`);
+                updateDeviceStatus();
+            } catch (error) {
+                console.error(`Error controlling ${device}:`, error);
+            }
+        }
+
+        // Bind toggle button events
+        ['fan', 'light', 'dehumidifier'].forEach(device => {
+            const button = document.getElementById(`${device}-toggle`);
+            button.addEventListener('click', () => {
+                const isOn = button.classList.contains('is-on');
+                controlDevice(device, isOn ? 'off' : 'on');
+            });
+        });
+
+        // Voice control
+        const voiceButton = document.getElementById('voice-control');
+        const voiceStatus = document.getElementById('voice-status');
+        let recognition = null;
+
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onresult = async (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                voiceStatus.textContent = `Recognized: ${transcript}`;
+                try {
+                    const data = await fetchJson(`${API_BASE}/command/${encodeURIComponent(transcript)}`);
+                    voiceStatus.textContent = data.status === 'success' ? `Success: ${data.message}` : `Error: ${data.message}`;
+                    updateDeviceStatus();
+                } catch (error) {
+                    console.error('Error executing command:', error);
+                    voiceStatus.textContent = 'Error: Command execution failed';
+                }
+            };
+
+            recognition.onend = () => {
+                if (voiceButton.dataset.active === 'true') {
+                    recognition.start();
+                } else {
+                    voiceStatus.textContent = 'Input detect: Inactive';
+                }
+            };
+
+            voiceButton.addEventListener('click', () => {
+                if (voiceButton.dataset.active === 'true') {
+                    voiceButton.dataset.active = 'false';
+                    recognition.stop();
+                } else {
+                    voiceButton.dataset.active = 'true';
+                    voiceStatus.textContent = 'Input detect: Listening...';
+                    recognition.start();
+                }
+            });
+        } else {
+            voiceStatus.textContent = 'Voice control not supported in this browser';
+            voiceButton.disabled = true;
+        }
+
+        // Periodic updates
+        async function updateAll() {
+            await Promise.all([
+                updateDeviceStatus(),
+                updateSensors(),
+                updatePrediction(),
+                updateLogs()
+            ]);
+        }
+        setInterval(updateAll, 5000);
+        updateAll();
+
+        // Loading screen
+        window.addEventListener('load', () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const loadingProgressBar = document.getElementById('loading-progress-bar');
+            const appContent = document.getElementById('app-content');
+
+            loadingProgressBar.style.width = '100%';
+
+            setTimeout(() => {
+                loadingScreen.classList.add('hide');
+                appContent.classList.add('show');
+            }, 3000);
+        });
+    </script>
+</body>
+
+</html>
